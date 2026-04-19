@@ -2,6 +2,17 @@
 
 Projeto pronto para rodar Python via Docker, sem precisar instalar Python localmente.
 
+## Variaveis de ambiente
+
+Para usar o exemplo `google`, configure a chave no arquivo `.env`:
+
+```bash
+GOOGLE_API_KEY=sua_chave_aqui
+GOOGLE_MODEL=gemini-2.5-flash
+```
+
+O arquivo `.env` nao deve ser versionado. Use `.env.example` como referencia.
+
 ## Comandos curtos (recomendado)
 
 Use os atalhos do Makefile:

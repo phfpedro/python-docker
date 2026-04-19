@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile
     container_name: python-pos
     working_dir: /app
+    env_file:
+      - .env
     volumes:
       - ./:/app
     command: python -u ${PYTHON_FILE:-src/main.py}
