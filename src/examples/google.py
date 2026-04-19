@@ -2,7 +2,9 @@ from __future__ import annotations
 from pathlib import Path
 import os
 import joblib
+import pandas as pd
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -12,38 +14,79 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
 if not GOOGLE_API_KEY:
     raise RuntimeError("Defina GOOGLE_API_KEY no arquivo .env para usar o exemplo google")
 
+GOOGLE_MODEL = os.getenv("GOOGLE_MODEL", "").strip()
+if not GOOGLE_MODEL:
+    raise RuntimeError("Defina GOOGLE_MODEL no arquivo .env para usar o exemplo google")
+
 client = genai.Client(api_key=GOOGLE_API_KEY)
 
-def list_cardapio():
-    return ["Hamburguer", "Pizza", "Salada", "Sopa", "Sanduíche", "Frango Fritso"]
+
+def montar_mensagem_quota_excedida() -> str:
+    return (
+        "A cota da API do Google foi excedida para o modelo configurado no momento. "
+        "Tente novamente em alguns segundos ou verifique o limite e o faturamento da chave configurada."
+    )
+
+def inferir(
+    apimentado: int,
+    leve: int,
+    veggie: int,
+    calorias: float,
+    freq: float,
+    lactose: int
+) -> dict:
+    print("[TOOL] inferir: inicio")
+    x = pd.DataFrame({
+        "apimentado": [apimentado],
+        "leve": [leve],
+        "veggie": [veggie],
+        "caloriasMediaDia": [calorias],
+        "frequenciaPedidosMes": [freq],
+        "IntoleranciaLactose": [lactose],
+    })
+
+    model = joblib.load(MODEL_PATH)
+    scaler = model["scaler"]
+    kmeans = model["kmeans"]
+    recomendacoes = model["recomendacoes"]
+
+    x_scaled = scaler.transform(x)
+    cluster = kmeans.predict(x_scaled)[0]
+    resultado = {
+        "cluster": int(cluster),
+        "recomendacao": recomendacoes(cluster),
+    }
+    print("[TOOL] inferir: fim")
+    return resultado
+
+def registra_pedido(item: str) -> dict:
+    print("[TOOL] registra pedido: inicio")
+    resultado = {
+        "status": "ok",
+        "mensagem": "pedido confirmado",
+    }
+    print("[TOOL] registrar pedido: fim")
+    return resultado
 
 def recomendar(pergunta: str, model: object) -> str:
     _ = model
 
-    # O modelo gemini-3-flash nao esta disponivel neste endpoint/v1beta.
-    preferred = os.getenv("GOOGLE_MODEL", "").strip()
-    model_candidates = [
-        preferred,
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
-    ]
-    model_candidates = [m for m in model_candidates if m]
-
-    last_error: Exception | None = None
-    for model_name in model_candidates:
-        try:
-            resposta = client.models.generate_content(
-                model=model_name, 
-                contents=pergunta, 
-                config=types.GenerateContentConfig(tools=[list_cardapio])
+    try:
+        resposta = client.models.generate_content(
+            model=GOOGLE_MODEL,
+            contents=pergunta,
+            config=types.GenerateContentConfig(
+                system_instruction="Voce e um assistente de recomendacao de pedidos para uma cafeteria. Use as ferramentas disponiveis para responder as perguntas dos clientes da melhor forma possivel, não invente itens que não existe no cardápio. não fala nada alem de registrar pedidos ou dar recomendaçoes.",
+                tools=[registra_pedido, inferir]
             )
-            return resposta.text or "Sem resposta do modelo"
-        except Exception as exc:
-            last_error = exc
-            continue
-
-    raise RuntimeError(f"Falha ao gerar conteudo com os modelos: {', '.join(model_candidates)}") from last_error
+        )
+        return resposta.text or "Sem resposta do modelo"
+    except genai_errors.ClientError as exc:
+        if getattr(exc, "status_code", None) == 429:
+            return montar_mensagem_quota_excedida()
+        raise RuntimeError(f"Falha ao gerar conteudo com o modelo configurado: {GOOGLE_MODEL}") from exc
+    except Exception as exc:
+        raise RuntimeError(f"Falha ao gerar conteudo com o modelo configurado: {GOOGLE_MODEL}") from exc
     # _ = pergunta
     # _ = model
     # return "Uma recomendacao"
@@ -69,7 +112,10 @@ def run(data_file: str | None = None) -> None:
         if pergunta.lower() == "sair":
             break
 
-        resposta = recomendar(pergunta, model)
-        print(f"< {resposta}")
+        try:
+            resposta = recomendar(pergunta, model)
+            print(f"< {resposta}")
+        except RuntimeError as exc:
+            print(f"< {exc}")
 
 
