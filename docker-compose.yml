@@ -1,0 +1,12 @@
+services:
+  python-pos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: python-pos
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: python -u ${PYTHON_FILE:-src/main.py}
+    stdin_open: true
+    tty: true

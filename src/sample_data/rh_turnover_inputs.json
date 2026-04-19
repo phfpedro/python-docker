@@ -1,0 +1,33 @@
+{
+  "salary_map": {
+    "baixo": 0,
+    "medio": 1,
+    "alto": 2
+  },
+  "novos_colaboradores": [
+    {
+      "nome": "Ana",
+      "tempo_empresa": 1,
+      "satisfacao": 0.28,
+      "horas_mes": 235,
+      "promocoes": 0,
+      "salario": "baixo"
+    },
+    {
+      "nome": "Carlos",
+      "tempo_empresa": 6,
+      "satisfacao": 0.89,
+      "horas_mes": 176,
+      "promocoes": 2,
+      "salario": "alto"
+    },
+    {
+      "nome": "Joao",
+      "tempo_empresa": 5,
+      "satisfacao": 0.53,
+      "horas_mes": 215,
+      "promocoes": 1,
+      "salario": "alto"
+    }
+  ]
+}
