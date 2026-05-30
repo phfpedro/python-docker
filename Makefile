@@ -21,8 +21,8 @@ repl:
 	docker compose run --rm python-pos python
 
 notebook:
-	mkdir -p notebooks
-	JUPYTER_PORT=$(NOTEBOOK_PORT) docker compose run --rm --service-ports python-pos jupyter notebook --ip 0.0.0.0 --port 8888 --no-browser --allow-root --notebook-dir /app/notebooks
+	mkdir -p src/notebooks
+	JUPYTER_PORT=$(NOTEBOOK_PORT) docker compose run --rm --service-ports python-pos jupyter notebook --ip 0.0.0.0 --port 8888 --no-browser --allow-root --notebook-dir /app/src/notebooks
 
 code:
 	docker compose run --rm python-pos python -u -c "$(CODE)"

@@ -97,7 +97,7 @@ Abre um shell Python interativo dentro do container.
 make notebook
 ```
 
-Sobe o Jupyter Notebook no container, publica a porta `8888` para acesso no navegador e fixa a pasta `notebooks/` como raiz dos arquivos do Jupyter.
+Sobe o Jupyter Notebook no container, publica a porta `8888` para acesso no navegador e fixa a pasta `src/notebooks/` como raiz dos arquivos do Jupyter.
 
 Se a porta `8888` ja estiver em uso:
 
@@ -162,11 +162,11 @@ docker compose run --rm python-pos python -u src/main.py --example "Big Data/1_p
 Para subir o Jupyter Notebook:
 
 ```bash
-mkdir -p notebooks
-JUPYTER_PORT=8888 docker compose run --rm --service-ports python-pos jupyter notebook --ip 0.0.0.0 --port 8888 --no-browser --allow-root --notebook-dir /app/notebooks
+mkdir -p src/notebooks
+JUPYTER_PORT=8888 docker compose run --rm --service-ports python-pos jupyter notebook --ip 0.0.0.0 --port 8888 --no-browser --allow-root --notebook-dir /app/src/notebooks
 ```
 
-Depois acesse no navegador o endereco informado no terminal, normalmente `http://127.0.0.1:8888/tree`. Novos notebooks criados pela interface vao para a pasta `notebooks/` em vez da raiz do projeto.
+Depois acesse no navegador o endereco informado no terminal, normalmente `http://127.0.0.1:8888/tree`. Novos notebooks criados pela interface vao para a pasta `src/notebooks/` em vez da raiz do projeto.
 
 ## Subir e executar
 
@@ -214,7 +214,8 @@ Depois de adicionar o `notebook`, faca esse rebuild antes de rodar `make noteboo
 
 - `Dockerfile`: imagem Python 3.12
 - `docker-compose.yml`: servico principal
-- `notebooks/`: pasta padrao para notebooks gerados pelo Jupyter
+- `src/notebooks/`: pasta padrao para notebooks gerados pelo Jupyter
+- `src/olist_data/`: datasets Olist usados nos labs e notebooks
 - `src/main.py`: runner generico de exemplos
 - `src/examples/Machine Learning/`: exemplos de machine learning
 - `src/examples/Big Data/`: exemplos de processamento em lotes e analise de grandes volumes

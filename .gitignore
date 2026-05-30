@@ -1,6 +1,6 @@
 .env
 __pycache__/
 *.pyc
-notebooks/
-olist_data/
+src/notebooks/
+src/olist_data/
 src/sample_data/
