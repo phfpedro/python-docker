@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -12,8 +13,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 
 
-def run(data_file: str | None = None) -> None:
-    base_dir = Path(__file__).resolve().parent.parent
+def run(data_file: Optional[str] = None) -> None:
+    base_dir = Path(__file__).resolve().parents[2]
     dataset_path = base_dir / "sample_data" / "rh_turnover_200.csv"
     inputs_path = Path(data_file) if data_file else base_dir / "sample_data" / "rh_turnover_inputs.json"
 

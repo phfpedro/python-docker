@@ -2,11 +2,12 @@ from pathlib import Path
 import os
 import joblib
 import pandas as pd
+from typing import Optional
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parents[2]
 MODEL_PATH = BASE_DIR / "sample_data" / "modelo_cluster_cafeteria.joblib"
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
@@ -25,6 +26,7 @@ def montar_mensagem_quota_excedida() -> str:
         "A cota da API do Google foi excedida para o modelo configurado no momento. "
         "Tente novamente em alguns segundos ou verifique o limite e o faturamento da chave configurada."
     )
+
 
 def inferir(
     apimentado: int,
@@ -58,6 +60,7 @@ def inferir(
     print("[TOOL] inferir: fim")
     return resultado
 
+
 def registra_pedido(item: str) -> dict:
     print("[TOOL] registra pedido: inicio")
     resultado = {
@@ -66,6 +69,7 @@ def registra_pedido(item: str) -> dict:
     }
     print("[TOOL] registrar pedido: fim")
     return resultado
+
 
 def recomendar(pergunta: str, model: object) -> str:
     _ = model
@@ -86,12 +90,9 @@ def recomendar(pergunta: str, model: object) -> str:
         raise RuntimeError(f"Falha ao gerar conteudo com o modelo configurado: {GOOGLE_MODEL}") from exc
     except Exception as exc:
         raise RuntimeError(f"Falha ao gerar conteudo com o modelo configurado: {GOOGLE_MODEL}") from exc
-    # _ = pergunta
-    # _ = model
-    # return "Uma recomendacao"
 
 
-def run(data_file: str | None = None) -> None:
+def run(data_file: Optional[str] = None) -> None:
     _ = data_file
 
     if not MODEL_PATH.exists():
@@ -116,5 +117,3 @@ def run(data_file: str | None = None) -> None:
             print(f"< {resposta}")
         except RuntimeError as exc:
             print(f"< {exc}")
-
-
