@@ -6,3 +6,4 @@ google-genai
 duckdb
 pyarrow
 notebook==7.2.2
+pyspark==4.0.1

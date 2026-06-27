@@ -7,10 +7,148 @@ services:
     working_dir: /app
     env_file:
       - .env
+    environment:
+      PYSPARK_SUBMIT_ARGS: >-
+        --packages org.apache.hadoop:hadoop-aws:3.4.1,io.delta:delta-spark_2.13:4.0.0,org.apache.spark:spark-avro_2.13:4.0.1
+        --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension
+        --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog
+        --conf spark.ui.bindAddress=0.0.0.0
+        --conf spark.driver.bindAddress=0.0.0.0
+        --conf spark.hadoop.fs.s3a.endpoint=http://minio:9000
+        --conf spark.hadoop.fs.s3a.access.key=minioadmin
+        --conf spark.hadoop.fs.s3a.secret.key=minioadmin
+        --conf spark.hadoop.fs.s3a.path.style.access=true
+        --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false
+        --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+        pyspark-shell
     ports:
       - "${JUPYTER_PORT:-8888}:8888"
+      - "${SPARK_UI_PORT:-4040}:4040"
+      - "${STREAMLIT_PORT:-8501}:8501"
     volumes:
       - ./:/app
     command: python -u ${PYTHON_FILE:-src/main.py}
     stdin_open: true
     tty: true
+    depends_on:
+      minio:
+        condition: service_healthy
+  # ── Object storage local: nosso data lake ────────────────────────
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000" # API S3, usada pelo Spark
+      - "9001:9001" # Console web do MinIO
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - ./big-data-local/minio-data:/data
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+  airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: airflow
+    depends_on:
+      - minio
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__EXECUTOR: "SequentialExecutor"
+      AIRFLOW__WEBSERVER__WEB_SERVER_HOST: "0.0.0.0"
+      AIRFLOW__WEBSERVER__WEB_SERVER_PORT: "8080"
+
+      JAVA_HOME: "/usr"
+      SPARK_LOCAL_IP: "127.0.0.1"
+      SPARK_LOCAL_HOSTNAME: "localhost"
+      PYSPARK_PYTHON: "python"
+      PYSPARK_DRIVER_PYTHON: "python"
+
+      MINIO_ENDPOINT: "http://minio:9000"
+      AWS_ACCESS_KEY_ID: "minioadmin"
+      AWS_SECRET_ACCESS_KEY: "minioadmin"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./pipeline:/opt/airflow/pipeline
+      - ivy-cache:/home/airflow/.ivy2
+    command: >
+      bash -lc "
+      set -e;
+      airflow db init;
+      airflow db migrate;
+      airflow users create
+      --username admin
+      --password admin
+      --firstname Admin
+      --lastname User
+      --role Admin
+      --email admin@example.com || true;
+      airflow scheduler &
+      exec airflow webserver --host 0.0.0.0 --port 8080
+      "
+
+  postgres-bi:
+    image: postgres:16
+    container_name: postgres-bi
+    environment:
+      POSTGRES_USER: bi
+      POSTGRES_PASSWORD: bi
+      POSTGRES_DB: bi
+    ports:
+      - "5436:5432"
+    volumes:
+      - pgbi-data:/var/lib/postgresql/data
+
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres-bi
+  # ── Container utilitário: cria o bucket datalake e encerra ───────
+  createbuckets:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc alias set local http://minio:9000 minioadmin minioadmin) do
+        echo 'esperando o minio subir...'; sleep 2;
+      done;
+      /usr/bin/mc mb --ignore-existing local/datalake;
+      echo '>> bucket datalake criado';
+      exit 0;
+      "
+volumes:
+  minio-data:
+  ivy-cache:
+  pgbi-data:

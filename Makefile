@@ -22,6 +22,8 @@ repl:
 
 notebook:
 	mkdir -p src/notebooks
+	docker compose build python-pos
+	docker compose up -d minio createbuckets
 	JUPYTER_PORT=$(NOTEBOOK_PORT) docker compose run --rm --service-ports python-pos jupyter notebook --ip 0.0.0.0 --port 8888 --no-browser --allow-root --notebook-dir /app/src/notebooks
 
 code:

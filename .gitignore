@@ -1,6 +1,8 @@
 .env
 __pycache__/
 *.pyc
+big-data-local/
 src/notebooks/
 src/olist_data/
 src/sample_data/
+.Trash-0/

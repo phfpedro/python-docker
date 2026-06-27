@@ -1,0 +1,24 @@
+FROM apache/airflow:2.9.3
+
+USER root
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends openjdk-17-jdk-headless procps curl \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV JAVA_HOME=/usr
+ENV PATH="/usr/bin:${PATH}"
+
+RUN mkdir -p /home/airflow/.ivy2/cache /home/airflow/.ivy2/jars \
+ && chown -R airflow:0 /home/airflow/.ivy2 \
+ && chmod -R 775 /home/airflow/.ivy2
+
+USER airflow
+
+ENV PYSPARK_PYTHON=python
+ENV PYSPARK_DRIVER_PYTHON=python
+ENV SPARK_LOCAL_IP=127.0.0.1
+ENV SPARK_LOCAL_HOSTNAME=localhost
+
+RUN pip install --no-cache-dir pyspark==3.5.0 delta-spark==3.2.0
